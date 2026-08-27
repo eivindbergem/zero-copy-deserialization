@@ -2,6 +2,17 @@ use std::{io::Write, marker::PhantomData};
 
 use crate::{endian::Endian, primitive::ArchivedPrimitive};
 
+fn get_padding<T>(pos: usize) -> usize {
+    let alignment = align_of::<T>();
+    let modulo = pos % alignment;
+
+    if modulo != 0 {
+        alignment - modulo
+    } else {
+        0
+    }
+}
+
 pub trait Serializer
 where
     Self: Sized,
@@ -13,7 +24,18 @@ where
         &mut self,
         value: ArchivedPrimitive<T, Self::Endian>,
     ) -> Result<(), Self::Error> {
+        self.write_padding::<ArchivedPrimitive<T, Self::Endian>>()?;
         self.write(value.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn write_padding<T>(&mut self) -> Result<(), Self::Error> {
+        let padding = get_padding::<T>(self.position());
+
+        for _ in 0..padding {
+            self.write(&[0])?;
+        }
 
         Ok(())
     }
