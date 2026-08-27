@@ -1,5 +1,8 @@
+use core::marker::PhantomData;
+
 use crate::{
     archive::{Archive, Archived},
+    endian::{Endian, Endianness, ToFromEndian},
     serialize::Serialize,
     serializer::Serializer,
 };
@@ -19,11 +22,12 @@ impl Primitive for i64 {}
 impl Primitive for i128 {}
 
 #[repr(C)]
-pub struct ArchivedPrimitive<T> {
+pub struct ArchivedPrimitive<T, E> {
     inner: T,
+    __: PhantomData<E>,
 }
 
-impl<T> ArchivedPrimitive<T> {
+impl<T, E> ArchivedPrimitive<T, E> {
     pub fn as_bytes(&self) -> &[u8] {
         let len = size_of::<T>();
         let ptr = &self.inner as *const _ as *const u8;
@@ -31,36 +35,50 @@ impl<T> ArchivedPrimitive<T> {
     }
 }
 
-impl<T> ArchivedPrimitive<T>
+impl<T, E> ArchivedPrimitive<T, E>
 where
-    T: Copy,
+    T: ToFromEndian + Copy,
+    E: Endian,
 {
     pub fn to_inner(&self) -> T {
-        self.inner
+        match E::ENDIANNESS {
+            Endianness::Little => T::from_le(self.inner),
+            Endianness::Big => T::from_be(self.inner),
+        }
     }
 }
 
-impl<T> From<T> for ArchivedPrimitive<T>
+impl<T, E> From<T> for ArchivedPrimitive<T, E>
 where
-    T: Copy,
+    T: ToFromEndian + Copy,
+    E: Endian,
 {
     fn from(value: T) -> Self {
-        Self { inner: value }
+        let value = match E::ENDIANNESS {
+            Endianness::Little => value.to_le(),
+            Endianness::Big => value.to_be(),
+        };
+        Self {
+            inner: value,
+            __: PhantomData,
+        }
     }
 }
 
-impl<T> core::fmt::Debug for ArchivedPrimitive<T>
+impl<T, E> core::fmt::Debug for ArchivedPrimitive<T, E>
 where
-    T: Copy + core::fmt::Debug,
+    T: ToFromEndian + Copy + core::fmt::Debug,
+    E: Endian,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.to_inner().fmt(f)
     }
 }
 
-impl<T> Archived for ArchivedPrimitive<T>
+impl<T, E> Archived for ArchivedPrimitive<T, E>
 where
-    T: Copy,
+    T: ToFromEndian + Copy,
+    E: Endian,
 {
     type DeserializedType = T;
 
@@ -71,20 +89,42 @@ where
 
 impl<T> Archive for T
 where
-    T: Primitive + Copy + core::fmt::Debug,
+    T: Primitive + Copy + ToFromEndian + PartialEq + core::fmt::Debug,
 {
-    type ArchiveType = ArchivedPrimitive<T>;
+    type ArchiveType<E>
+        = ArchivedPrimitive<T, E>
+    where
+        E: Endian;
 }
 
 impl<T> Serialize for T
 where
-    T: Archive + Copy,
+    T: Archive + ToFromEndian + Copy,
 {
     fn serialize<S>(&self, writer: &mut S) -> Result<(), S::Error>
     where
         S: Serializer,
-        T: Into<ArchivedPrimitive<T>>,
+        T: Into<ArchivedPrimitive<T, S::Endian>>,
     {
         writer.write_primitive(ArchivedPrimitive::from(*self))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::endian::{BigEndian, LittleEndian};
+
+    #[test]
+    fn eq() {
+        assert_eq!(
+            ArchivedPrimitive::<u8, LittleEndian>::from(42).to_inner(),
+            42
+        );
+        assert_eq!(ArchivedPrimitive::<u8, BigEndian>::from(42).to_inner(), 42);
+        assert_eq!(
+            ArchivedPrimitive::<u8, BigEndian>::from(42),
+            ArchivedPrimitive::<u8, BigEndian>::from(42)
+        );
     }
 }

@@ -11,11 +11,17 @@ pub struct Endian {
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct ArchivedEndian {
-    value: <u32 as Archive>::ArchiveType,
+pub struct ArchivedEndian<E>
+where
+    E: archive::endian::Endian,
+{
+    value: <u32 as Archive>::ArchiveType<E>,
 }
 
-impl Archived for ArchivedEndian {
+impl<E> Archived for ArchivedEndian<E>
+where
+    E: archive::endian::Endian,
+{
     type DeserializedType = Endian;
 
     fn deserialize(&self) -> Self::DeserializedType {
@@ -26,7 +32,10 @@ impl Archived for ArchivedEndian {
 }
 
 impl Archive for Endian {
-    type ArchiveType = ArchivedEndian;
+    type ArchiveType<E>
+        = ArchivedEndian<E>
+    where
+        E: archive::endian::Endian;
 }
 
 impl Serialize for Endian {

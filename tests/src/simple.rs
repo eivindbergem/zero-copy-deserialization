@@ -1,4 +1,5 @@
 use archive::archive::{Archive, Archived};
+use archive::endian::Endian;
 use archive::serialize::Serialize;
 use archive::serializer::Serializer;
 
@@ -9,11 +10,17 @@ pub struct Simple {
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct ArchivedSimple {
-    value: <u8 as Archive>::ArchiveType,
+pub struct ArchivedSimple<E>
+where
+    E: Endian,
+{
+    value: <u8 as Archive>::ArchiveType<E>,
 }
 
-impl Archived for ArchivedSimple {
+impl<E> Archived for ArchivedSimple<E>
+where
+    E: Endian,
+{
     type DeserializedType = Simple;
 
     fn deserialize(&self) -> Self::DeserializedType {
@@ -24,7 +31,10 @@ impl Archived for ArchivedSimple {
 }
 
 impl Archive for Simple {
-    type ArchiveType = ArchivedSimple;
+    type ArchiveType<E>
+        = ArchivedSimple<E>
+    where
+        E: Endian;
 }
 
 impl Serialize for Simple {
