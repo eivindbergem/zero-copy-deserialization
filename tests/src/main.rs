@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use archive::{endian::LittleEndian, serialize::Serialize, serializer::StdSerializer};
-use tests::{endian::endian, layout::layout, simple::simple};
+use tests::{endian::endian, layout::layout, simple::simple, slice::slice};
 
 fn write_to_file<T: Serialize>(name: &str, item: &T) {
     let dir = Path::new("samples");
@@ -16,4 +16,5 @@ fn main() {
     write_to_file("simple", &simple());
     write_to_file("endian", &endian());
     write_to_file("layout", &layout());
+    write_to_file("slice", &slice());
 }

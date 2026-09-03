@@ -5,7 +5,7 @@ use archive::{
     endian::LittleEndian,
     serialize::Serialize,
 };
-use tests::{endian::endian, layout::layout, simple::simple};
+use tests::{endian::endian, layout::layout, simple::simple, slice::slice};
 
 fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
     buf: &mut Vec<u8>,
@@ -48,4 +48,9 @@ fn test_endian() {
 #[test]
 fn test_layout() {
     run_test("layout", layout());
+}
+
+#[test]
+fn test_slice() {
+    run_test("slice", slice());
 }
