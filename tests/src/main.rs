@@ -8,7 +8,7 @@ fn write_to_file<T: Serialize>(name: &str, item: &T) {
     std::fs::create_dir_all(dir).unwrap();
 
     let mut serializer =
-        StdSerializer::<_, LittleEndian>::new(File::create(dir.join(name)).unwrap());
+        StdSerializer::<_, u16, LittleEndian>::new(File::create(dir.join(name)).unwrap());
     item.serialize(&mut serializer).unwrap();
 }
 

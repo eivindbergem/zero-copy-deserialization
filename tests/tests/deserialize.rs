@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use archive::{
-    archive::{Archive, Archived},
+    archive::{Archive, Archived, Deserialize},
     endian::LittleEndian,
     serialize::Serialize,
 };
@@ -9,8 +9,8 @@ use tests::{endian::endian, layout::layout, simple::simple};
 
 fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
     buf: &mut Vec<u8>,
-) -> &T::ArchiveType<LittleEndian> {
-    let min_len = size_of::<T::ArchiveType<LittleEndian>>();
+) -> &T::ArchiveType<u16, LittleEndian> {
+    let min_len = size_of::<T::ArchiveType<u16, LittleEndian>>();
 
     dbg!(&buf);
 
@@ -18,12 +18,15 @@ fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
         buf.resize(min_len, 0);
     }
 
-    T::from_bytes::<LittleEndian>(buf).unwrap()
+    T::from_bytes::<u16, LittleEndian>(buf).unwrap()
 }
 
 fn run_test<T>(name: &str, expect: T)
 where
     T: Serialize + Archive + std::fmt::Debug + PartialEq,
+    T::ArchiveType<u16, LittleEndian>: Deserialize,
+    for<'a> <T::ArchiveType<u16, LittleEndian> as Archived>::DeserializedType<'a>:
+        PartialEq<T> + std::fmt::Debug,
 {
     let dir = Path::new("samples");
     let mut bytes = std::fs::read(dir.join(name)).unwrap();

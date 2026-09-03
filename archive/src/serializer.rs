@@ -1,23 +1,28 @@
 use std::{io::Write, marker::PhantomData};
 
-use crate::{endian::Endian, primitive::ArchivedPrimitive};
+use crate::{endian::Endian, pointer::Pointer, primitive::ArchivedPrimitive};
 
-fn get_padding<T>(pos: usize) -> usize {
-    let alignment = align_of::<T>();
-    let modulo = pos % alignment;
+pub trait Padding: Sized {
+    fn get_padding(pos: usize) -> usize {
+        let alignment = align_of::<Self>();
+        let modulo = pos % alignment;
 
-    if modulo != 0 {
-        alignment - modulo
-    } else {
-        0
+        if modulo != 0 {
+            alignment - modulo
+        } else {
+            0
+        }
     }
 }
+
+impl<T> Padding for T where T: Sized {}
 
 pub trait Serializer
 where
     Self: Sized,
 {
     type Endian: Endian;
+    type Pointer: Pointer;
     type Error;
 
     fn write_primitive<T>(
@@ -30,8 +35,8 @@ where
         Ok(())
     }
 
-    fn write_padding<T>(&mut self) -> Result<(), Self::Error> {
-        let padding = get_padding::<T>(self.position());
+    fn write_padding<T: Padding>(&mut self) -> Result<(), Self::Error> {
+        let padding = T::get_padding(self.position());
 
         for _ in 0..padding {
             self.write(&[0])?;
@@ -40,17 +45,24 @@ where
         Ok(())
     }
 
+    fn write_pointer(&mut self, value: usize) -> Result<(), Self::Error> {
+        let value = ArchivedPrimitive::<Self::Pointer, Self::Endian>::from_usize(value);
+        self.write_primitive(value)?;
+
+        Ok(())
+    }
+
     fn write(&mut self, bytes: &[u8]) -> Result<(), Self::Error>;
     fn position(&self) -> usize;
 }
 
-pub struct StdSerializer<W, E> {
+pub struct StdSerializer<W, P, E> {
     writer: W,
     pos: usize,
-    __: PhantomData<E>,
+    __: PhantomData<(P, E)>,
 }
 
-impl<W, E> StdSerializer<W, E> {
+impl<W, P, E> StdSerializer<W, P, E> {
     pub fn new(writer: W) -> Self {
         Self {
             writer,
@@ -64,12 +76,14 @@ impl<W, E> StdSerializer<W, E> {
     }
 }
 
-impl<W, E> Serializer for StdSerializer<W, E>
+impl<W, P, E> Serializer for StdSerializer<W, P, E>
 where
     W: Write,
+    P: Pointer,
     E: Endian,
 {
     type Endian = E;
+    type Pointer = P;
     type Error = std::io::Error;
 
     fn write(&mut self, bytes: &[u8]) -> Result<(), Self::Error> {

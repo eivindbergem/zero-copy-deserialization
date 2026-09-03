@@ -1,4 +1,4 @@
-use crate::endian::Endian;
+use crate::{endian::Endian, pointer::Pointer};
 
 #[derive(Debug)]
 pub enum Error {
@@ -6,31 +6,35 @@ pub enum Error {
 }
 
 pub trait Archived {
-    type DeserializedType;
-
-    fn deserialize(&self) -> Self::DeserializedType;
+    type DeserializedType<'a>;
 }
 
 pub trait Archive {
-    type ArchiveType<E>: core::fmt::Debug + Archived<DeserializedType = Self>
-    where
-        E: Endian;
-
-    fn from_bytes<E>(buffer: &[u8]) -> Result<&Self::ArchiveType<E>, Error>
+    type ArchiveType<P, E>: core::fmt::Debug + Archived
     where
         E: Endian,
+        P: Pointer;
+
+    fn from_bytes<P, E>(buffer: &[u8]) -> Result<&Self::ArchiveType<P, E>, Error>
+    where
+        E: Endian,
+        P: Pointer,
     {
-        if buffer.len() < size_of::<Self::ArchiveType<E>>() {
+        if buffer.len() < size_of::<Self::ArchiveType<P, E>>() {
             return Err(Error::BufferTooSmall {
-                expected: size_of::<Self::ArchiveType<E>>(),
+                expected: size_of::<Self::ArchiveType<P, E>>(),
                 found: buffer.len(),
             });
         }
 
-        assert!(buffer.len() >= size_of::<Self::ArchiveType<E>>());
+        assert!(buffer.len() >= size_of::<Self::ArchiveType<P, E>>());
         let ptr = buffer.as_ptr();
-        let archive = unsafe { &*(ptr as *const Self::ArchiveType<E>) };
+        let archive = unsafe { &*(ptr as *const Self::ArchiveType<P, E>) };
 
         Ok(archive)
     }
+}
+
+pub trait Deserialize: Archived {
+    fn deserialize(&self) -> Self::DeserializedType<'_>;
 }

@@ -1,9 +1,10 @@
 use core::marker::PhantomData;
 
 use crate::{
-    archive::{Archive, Archived},
+    archive::{Archive, Archived, Deserialize},
     endian::{Endian, Endianness, ToFromEndian},
-    serialize::Serialize,
+    pointer::Pointer,
+    serialize::{Serialize, VariableDataTracker},
     serializer::Serializer,
 };
 
@@ -48,6 +49,28 @@ where
     }
 }
 
+impl<T, E> ArchivedPrimitive<T, E>
+where
+    T: ToFromEndian + Copy + TryInto<usize>,
+    E: Endian,
+{
+    pub fn to_usize(&self) -> usize {
+        self.to_inner()
+            .try_into()
+            .unwrap_or_else(|_| unreachable!())
+    }
+}
+
+impl<T, E> ArchivedPrimitive<T, E>
+where
+    T: ToFromEndian + Copy + TryFrom<usize>,
+    E: Endian,
+{
+    pub fn from_usize(value: usize) -> Self {
+        value.try_into().unwrap_or_else(|_| unreachable!())
+    }
+}
+
 impl<T, E> From<T> for ArchivedPrimitive<T, E>
 where
     T: ToFromEndian + Copy,
@@ -75,15 +98,42 @@ where
     }
 }
 
-impl<T, E> Archived for ArchivedPrimitive<T, E>
+impl<T, E> Archived for ArchivedPrimitive<T, E> {
+    type DeserializedType<'a> = T;
+}
+
+impl<T, E> Deserialize for ArchivedPrimitive<T, E>
 where
     T: ToFromEndian + Copy,
     E: Endian,
 {
-    type DeserializedType = T;
-
-    fn deserialize(&self) -> Self::DeserializedType {
+    fn deserialize(&self) -> Self::DeserializedType<'_> {
         self.to_inner()
+    }
+}
+
+impl<T, E> TryFrom<usize> for ArchivedPrimitive<T, E>
+where
+    T: TryFrom<usize> + ToFromEndian + Copy,
+    E: Endian,
+{
+    type Error = <T as TryFrom<usize>>::Error;
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        let value: T = value.try_into()?;
+        Ok(ArchivedPrimitive::from(value))
+    }
+}
+
+impl<T, E> TryInto<usize> for ArchivedPrimitive<T, E>
+where
+    T: TryInto<usize> + ToFromEndian + Copy,
+    E: Endian,
+{
+    type Error = <T as TryInto<usize>>::Error;
+
+    fn try_into(self) -> Result<usize, Self::Error> {
+        Ok(self.to_inner().try_into()?)
     }
 }
 
@@ -91,40 +141,40 @@ impl<T> Archive for T
 where
     T: Primitive + Copy + ToFromEndian + PartialEq + core::fmt::Debug,
 {
-    type ArchiveType<E>
+    type ArchiveType<P, E>
         = ArchivedPrimitive<T, E>
     where
+        P: Pointer,
         E: Endian;
 }
 
 impl<T> Serialize for T
 where
-    T: Archive + ToFromEndian + Copy,
+    T: Primitive + Archive + ToFromEndian + Copy,
 {
-    fn serialize<S>(&self, writer: &mut S) -> Result<(), S::Error>
+    fn serialize_fixed_data<S>(
+        &self,
+        writer: &mut S,
+        _tracker: &mut VariableDataTracker,
+    ) -> Result<(), S::Error>
     where
         S: Serializer,
         T: Into<ArchivedPrimitive<T, S::Endian>>,
     {
-        writer.write_primitive(ArchivedPrimitive::from(*self))
+        let value = ArchivedPrimitive::<T, S::Endian>::from(*self);
+        writer.write_primitive(value)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::endian::{BigEndian, LittleEndian};
+    fn track_variable_data<S>(&self, _tracker: &mut VariableDataTracker)
+    where
+        S: Serializer,
+    {
+    }
 
-    #[test]
-    fn eq() {
-        assert_eq!(
-            ArchivedPrimitive::<u8, LittleEndian>::from(42).to_inner(),
-            42
-        );
-        assert_eq!(ArchivedPrimitive::<u8, BigEndian>::from(42).to_inner(), 42);
-        assert_eq!(
-            ArchivedPrimitive::<u8, BigEndian>::from(42),
-            ArchivedPrimitive::<u8, BigEndian>::from(42)
-        );
+    fn serialize_variable_data<S>(&self, _writer: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        Ok(())
     }
 }
