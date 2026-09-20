@@ -5,7 +5,7 @@ use archive::{
     endian::LittleEndian,
     serialize::Serialize,
 };
-use tests::{endian::endian, layout::layout, simple::simple, slice::slice};
+use tests::{endian::endian, layout::layout, nested_slice::nested_slice, simple::simple, slice::slice};
 
 fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
     buf: &mut Vec<u8>,
@@ -53,4 +53,9 @@ fn test_layout() {
 #[test]
 fn test_slice() {
     run_test("slice", slice());
+}
+
+#[test]
+fn test_nested_slice() {
+    run_test("nested_slice", nested_slice());
 }
