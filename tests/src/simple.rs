@@ -1,6 +1,7 @@
 use archive::archive::{Archive, Archived};
 use archive::endian::Endian;
-use archive::serialize::Serialize;
+use archive::pointer::Pointer;
+use archive::serialize::{Serialize, VariableDataTracker};
 use archive::serializer::Serializer;
 
 #[derive(PartialEq, Debug)]
@@ -10,15 +11,17 @@ pub struct Simple {
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct ArchivedSimple<E>
+pub struct ArchivedSimple<P, E>
 where
+    P: Pointer,
     E: Endian,
 {
-    value: <u8 as Archive>::ArchiveType<E>,
+    value: <u8 as Archive>::ArchiveType<P, E>,
 }
 
-impl<E> Archived for ArchivedSimple<E>
+impl<P, E> Archived for ArchivedSimple<P, E>
 where
+    P: Pointer,
     E: Endian,
 {
     type DeserializedType = Simple;
@@ -31,18 +34,37 @@ where
 }
 
 impl Archive for Simple {
-    type ArchiveType<E>
-        = ArchivedSimple<E>
+    type ArchiveType<P, E>
+        = ArchivedSimple<P, E>
     where
+        P: Pointer,
         E: Endian;
 }
 
 impl Serialize for Simple {
-    fn serialize<S>(&self, writer: &mut S) -> Result<(), S::Error>
+    fn serialize_fixed_data<S>(
+        &self,
+        writer: &mut S,
+        tracker: &mut VariableDataTracker,
+    ) -> Result<(), S::Error>
     where
         S: Serializer,
     {
-        self.value.serialize(writer)
+        self.value.serialize_fixed_data(writer, tracker)
+    }
+
+    fn track_variable_data<S>(&self, tracker: &mut VariableDataTracker)
+    where
+        S: Serializer,
+    {
+        self.value.track_variable_data::<S>(tracker);
+    }
+
+    fn serialize_variable_data<S>(&self, writer: &mut S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        self.value.serialize_variable_data(writer)
     }
 }
 
