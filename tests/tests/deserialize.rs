@@ -1,11 +1,14 @@
 use archive::{
     archive::{Archive, Archived},
+    endian::LittleEndian,
     serialize::Serialize,
 };
-use tests::{endian::endian, simple::simple};
+use tests::{endian::endian, layout::layout, simple::simple};
 
-fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(buf: &mut Vec<u8>) -> &T::ArchiveType {
-    let min_len = size_of::<T::ArchiveType>();
+fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
+    buf: &mut Vec<u8>,
+) -> &T::ArchiveType<LittleEndian> {
+    let min_len = size_of::<T::ArchiveType<LittleEndian>>();
 
     dbg!(&buf);
 
@@ -13,13 +16,13 @@ fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(buf: &mut Vec<u8>) -> &T
         buf.resize(min_len, 0);
     }
 
-    unsafe { T::from_bytes(buf).unwrap() }
+    unsafe { T::from_bytes::<LittleEndian>(buf).unwrap() }
 }
 
 fn run_test<T>(serialized: &[u8], expect: T)
 where
     T: Serialize + Archive + std::fmt::Debug + PartialEq,
-    <T::ArchiveType as Archived>::DeserializedType: PartialEq<T> + std::fmt::Debug,
+    <T::ArchiveType<LittleEndian> as Archived>::DeserializedType: PartialEq<T> + std::fmt::Debug,
 {
     let mut serialized = serialized.to_vec();
     let archived = from_bytes::<T>(&mut serialized);
@@ -38,4 +41,9 @@ fn test_simple() {
 #[test]
 fn test_endian() {
     run_test(include_bytes!("../samples/endian"), endian());
+}
+
+#[test]
+fn test_layout() {
+    run_test(include_bytes!("../samples/layout"), layout());
 }
