@@ -5,6 +5,7 @@ use archive::{
 };
 use tests::{
     endian::endian, layout::layout, nested_slice::nested_slice, simple::simple, slice::slice,
+    string::string,
 };
 
 fn from_bytes<T: Serialize + Archive + std::fmt::Debug>(
@@ -59,4 +60,9 @@ fn test_slice() {
 #[test]
 fn test_nested_slice() {
     run_test(include_bytes!("../samples/nested_slice"), nested_slice());
+}
+
+#[test]
+fn test_string() {
+    run_test(include_bytes!("../samples/string"), string());
 }
