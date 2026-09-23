@@ -48,6 +48,14 @@ where
         Ok(())
     }
 
+    fn write_zeros(&mut self, n: usize) -> Result<(), Self::Error> {
+        for _ in 0..n {
+            self.write(&[0])?;
+        }
+
+        Ok(())
+    }
+
     fn write(&mut self, bytes: &[u8]) -> Result<(), Self::Error>;
     fn position(&self) -> usize;
 }

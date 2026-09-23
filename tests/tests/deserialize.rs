@@ -4,7 +4,12 @@ use archive::{
     serialize::Serialize,
 };
 use tests::{
-    endian::endian, layout::layout, nested_slice::nested_slice, simple::simple, slice::slice,
+    endian::endian,
+    enums::{enum_struct, enum_tuple, enum_unit},
+    layout::layout,
+    nested_slice::nested_slice,
+    simple::simple,
+    slice::slice,
     string::string,
 };
 
@@ -65,4 +70,19 @@ fn test_nested_slice() {
 #[test]
 fn test_string() {
     run_test(include_bytes!("../samples/string"), string());
+}
+
+#[test]
+fn test_enum_unit() {
+    run_test(include_bytes!("../samples/enum_unit"), enum_unit());
+}
+
+#[test]
+fn test_enum_tuple() {
+    run_test(include_bytes!("../samples/enum_tuple"), enum_tuple());
+}
+
+#[test]
+fn test_enum_struct() {
+    run_test(include_bytes!("../samples/enum_struct"), enum_struct());
 }

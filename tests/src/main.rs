@@ -2,7 +2,13 @@ use std::{fs::File, path::Path};
 
 use archive::{endian::LittleEndian, serialize::Serialize, serializer::StdSerializer};
 use tests::{
-    endian::endian, layout::layout, nested_slice::nested_slice, simple::simple, slice::slice,
+    endian::endian,
+    enums::{enum_struct, enum_tuple, enum_unit},
+    layout::layout,
+    nested_slice::nested_slice,
+    simple::simple,
+    slice::slice,
+    string::string,
 };
 
 fn write_to_file<T: Serialize>(name: &str, item: &T) {
@@ -20,4 +26,8 @@ fn main() {
     write_to_file("layout", &layout());
     write_to_file("slice", &slice());
     write_to_file("nested_slice", &nested_slice());
+    write_to_file("string", &string());
+    write_to_file("enum_unit", &enum_unit());
+    write_to_file("enum_tuple", &enum_tuple());
+    write_to_file("enum_struct", &enum_struct());
 }
