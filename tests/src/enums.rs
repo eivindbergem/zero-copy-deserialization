@@ -1,6 +1,6 @@
 use archive::{
     archive::{Archive, Archived},
-    endian::Endian,
+    endian::{Endian, LittleEndian},
     pointer::Pointer,
     primitive::ArchivedPrimitive,
     serialize::Serialize,
@@ -8,6 +8,7 @@ use archive::{
 };
 
 #[derive(Debug, PartialEq)]
+#[repr(u32)]
 pub enum Enum {
     UnitVariant,
     TupleVariant(String),
@@ -15,7 +16,7 @@ pub enum Enum {
 }
 
 #[repr(C)]
-#[repr(u8)]
+#[repr(u32)]
 // #[derive(Debug)]
 pub enum ArchivedEnum<P, E>
 where
@@ -97,7 +98,7 @@ impl Serialize for Enum {
             Enum::StructVariant { .. } => 2,
         };
 
-        writer.write_primitive(ArchivedPrimitive::<u8, S::Endian>::from_usize(tag))?;
+        writer.write_discriminant(ArchivedPrimitive::<u32, LittleEndian>::from_usize(tag))?;
         writer.write_padding::<Self::ArchiveType<S::Pointer, S::Endian>>()?;
 
         match self {

@@ -1,6 +1,10 @@
 use std::{io::Write, marker::PhantomData};
 
-use crate::{endian::Endian, pointer::Pointer, primitive::ArchivedPrimitive};
+use crate::{
+    endian::{Endian, LittleEndian},
+    pointer::Pointer,
+    primitive::ArchivedPrimitive,
+};
 
 pub trait Padding: Sized {
     fn get_padding(pos: usize) -> usize {
@@ -44,6 +48,16 @@ where
     fn write_pointer(&mut self, value: usize) -> Result<(), Self::Error> {
         let value = ArchivedPrimitive::<Self::Pointer, Self::Endian>::from_usize(value);
         self.write_primitive(value)?;
+
+        Ok(())
+    }
+
+    fn write_discriminant<T>(
+        &mut self,
+        value: ArchivedPrimitive<T, LittleEndian>,
+    ) -> Result<(), Self::Error> {
+        self.write_padding::<ArchivedPrimitive<T, LittleEndian>>()?;
+        self.write(value.as_bytes())?;
 
         Ok(())
     }
