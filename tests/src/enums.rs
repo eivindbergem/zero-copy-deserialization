@@ -15,6 +15,20 @@ pub enum Enum {
     StructVariant { value1: u32, value2: i64 },
 }
 
+#[cfg(target_endian = "little")]
+mod discriminants {
+    pub const UNIT_VARIANT: u32 = 0x00000000;
+    pub const TUPLE_VARIANT: u32 = 0x00000001;
+    pub const STRUCT_VARIANT: u32 = 0x00000002;
+}
+
+#[cfg(target_endian = "big")]
+mod discriminants {
+    pub const UNIT_VARIANT: u32 = 0x00000000;
+    pub const TUPLE_VARIANT: u32 = 0x01000000;
+    pub const STRUCT_VARIANT: u32 = 0x02000000;
+}
+
 #[repr(C)]
 #[repr(u32)]
 // #[derive(Debug)]
@@ -23,12 +37,12 @@ where
     P: Pointer,
     E: Endian,
 {
-    UnitVariant,
-    TupleVariant(ArchivedString<P, E>),
+    UnitVariant = discriminants::UNIT_VARIANT,
+    TupleVariant(ArchivedString<P, E>) = discriminants::TUPLE_VARIANT,
     StructVariant {
         value1: ArchivedPrimitive<u32, E>,
         value2: ArchivedPrimitive<i64, E>,
-    },
+    } = discriminants::STRUCT_VARIANT,
 }
 
 impl<P, E> core::fmt::Debug for ArchivedEnum<P, E>
